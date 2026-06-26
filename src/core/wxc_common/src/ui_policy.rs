@@ -224,6 +224,7 @@ mod tests {
             desktop_system_control: true,
             system_settings: "all".to_string(),
             ime: true,
+            desktop: "winsta0\\default".to_string(),
         };
         assert_eq!(
             resolve_ui_restrictions(&ui, &bp),

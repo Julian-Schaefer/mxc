@@ -306,6 +306,11 @@
               "type": "boolean",
               "default": false,
               "description": "Whether IME (Input Method Editor) is allowed."
+            },
+            "desktop": {
+              "type": "string",
+              "default": "winsta0\\default",
+              "description": "Named desktop (window-station\\desktop) to launch the contained process on (STARTUPINFO.lpDesktop). Default 'winsta0\\\\default'. An empty string inherits the launcher's window station and desktop, allowing a host to run the sandbox on a pre-created background desktop via SetThreadDesktop. A non-empty name requires the AppContainer SID to be granted access to that desktop."
             }
           }
         }

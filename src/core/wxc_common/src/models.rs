@@ -387,6 +387,14 @@ pub struct BaseProcessUiConfig {
     pub system_settings: String,
     /// Whether IME (Input Method Editor) is allowed.
     pub ime: bool,
+    /// Named desktop the contained process is launched on (Windows
+    /// `STARTUPINFO.lpDesktop`), e.g. `"winsta0\\default"` or `"BgDesktop"`.
+    /// Default `"winsta0\\default"` preserves the historically hardcoded target.
+    /// An EMPTY string means "inherit the launcher's window station + desktop"
+    /// (lpDesktop = NULL) — set it empty after the host has SetThreadDesktop()'d to
+    /// a pre-created background desktop to run the sandbox off the interactive desktop.
+    /// Parsed from `processContainer.ui.desktop`.
+    pub desktop: String,
 }
 
 impl Default for BaseProcessUiConfig {
@@ -396,6 +404,7 @@ impl Default for BaseProcessUiConfig {
             desktop_system_control: false,
             system_settings: "none".to_string(),
             ime: false,
+            desktop: "winsta0\\default".to_string(),
         }
     }
 }

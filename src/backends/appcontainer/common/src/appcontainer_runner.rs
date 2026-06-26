@@ -679,12 +679,25 @@ impl AppContainerScriptRunner {
         }
 
         // --- Setup STARTUPINFOEXW ---
-        let mut desktop_wide = string_util::to_wide("winsta0\\default");
+        // Desktop target (STARTUPINFO.lpDesktop). Driven by processContainer.ui.desktop
+        // (default "winsta0\\default" — the historically hardcoded value). An EMPTY
+        // string yields a NULL lpDesktop, which inherits the launcher's window station
+        // and desktop (documented CreateProcessW behavior) — so a host that pre-created a
+        // background desktop and SetThreadDesktop()'d to it before launching wxc-exec runs
+        // the sandbox there. A non-empty name targets that desktop explicitly (the target
+        // token must have access to it — grant the AppContainer SID an ACE on the desktop).
+        let desktop_cfg = request.policy.base_process_ui.desktop.as_str();
+        let mut desktop_wide = string_util::to_wide(desktop_cfg);
+        let lp_desktop = if desktop_cfg.is_empty() {
+            PWSTR::null()
+        } else {
+            PWSTR(desktop_wide.as_mut_ptr())
+        };
 
         let si_ex = STARTUPINFOEXW {
             StartupInfo: STARTUPINFOW {
                 cb: std::mem::size_of::<STARTUPINFOEXW>() as u32,
-                lpDesktop: PWSTR(desktop_wide.as_mut_ptr()),
+                lpDesktop: lp_desktop,
                 dwFlags: if pipe_mode {
                     STARTF_USESTDHANDLES
                 } else {

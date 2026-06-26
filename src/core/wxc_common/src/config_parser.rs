@@ -56,6 +56,9 @@ struct RawBaseProcessUi {
     #[serde(rename = "systemSettings")]
     system_settings: Option<String>,
     ime: Option<bool>,
+    /// Named desktop (window-station\\desktop) to launch the contained process on.
+    /// Empty string => inherit the launcher's thread desktop (lpDesktop = NULL).
+    desktop: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -964,6 +967,12 @@ fn convert_raw_config_inner(
             policy.base_process_ui.system_settings =
                 raw_ui.system_settings.unwrap_or_else(|| "none".to_string());
             policy.base_process_ui.ime = raw_ui.ime.unwrap_or(false);
+            // Empty/absent => "winsta0\\default" (historical hardcoded target). An
+            // explicit "" stays empty and is treated as "inherit launcher desktop".
+            policy.base_process_ui.desktop = match raw_ui.desktop {
+                Some(d) => d,
+                None => "winsta0\\default".to_string(),
+            };
         }
     }
 
@@ -1798,6 +1807,28 @@ mod tests {
         assert_eq!(req.policy.capabilities[0], "internetClient");
         assert_eq!(req.policy.capabilities[1], "privateNetworkClientServer");
         assert_eq!(req.policy.capabilities[2], "documentsLibrary");
+    }
+
+    #[test]
+    fn process_container_ui_desktop() {
+        // Named desktop -> read verbatim.
+        let named = r#"{"process": {"commandLine": "x"}, "containment": "processcontainer",
+            "processContainer": {"ui": {"desktop": "BgDesktop"}}}"#;
+        let mut logger = test_logger();
+        let req = load_request(&base64_encode(named.as_bytes()), &mut logger, true).unwrap();
+        assert_eq!(req.policy.base_process_ui.desktop, "BgDesktop");
+
+        // Explicit empty string -> stays empty (means "inherit launcher desktop" in the runner).
+        let empty = r#"{"process": {"commandLine": "x"}, "containment": "processcontainer",
+            "processContainer": {"ui": {"desktop": ""}}}"#;
+        let req = load_request(&base64_encode(empty.as_bytes()), &mut logger, true).unwrap();
+        assert_eq!(req.policy.base_process_ui.desktop, "");
+
+        // Omitted under an otherwise-present ui block -> historical default.
+        let omitted = r#"{"process": {"commandLine": "x"}, "containment": "processcontainer",
+            "processContainer": {"ui": {"isolation": "atoms"}}}"#;
+        let req = load_request(&base64_encode(omitted.as_bytes()), &mut logger, true).unwrap();
+        assert_eq!(req.policy.base_process_ui.desktop, "winsta0\\default");
     }
 
     #[test]
